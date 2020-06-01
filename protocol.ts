@@ -165,9 +165,13 @@ export interface YouWonAmountEvent {
   yourChipAmount: number;
 }
 
-export type IncomingMessage =
-  | RegisterResponseMessage
-  | ActionRequestMessage
+export interface ErrorMessage {
+  type: "error";
+  code: string;
+  message: string;
+}
+
+export type TableEvent =
   | PlayIsStartedEvent
   | CommunityHasBeenDealtACardEvent
   | PlayerBetBigBlindEvent
@@ -186,6 +190,12 @@ export type IncomingMessage =
   | YouHaveBeenDealtACardEvent
   | YouWonAmountEvent;
 
+export type IncomingMessage =
+  | RegisterResponseMessage
+  | ActionRequestMessage
+  | ErrorMessage
+  | TableEvent;
+
 export type OutgoingMessage =
   | RegisterRequestMessage
   | ActionResponseMessage;
@@ -198,6 +208,16 @@ export function parseMessage(message: string): IncomingMessage {
 
   const parts = type.split(".");
   const className = parts.pop();
+  const classifier = parts.pop();
+
+  if (classifier === "exception") {
+    return {
+      type: "error",
+      message: rest.message,
+      code: className!,
+    };
+  }
+
   return {
     ...rest,
     type: className,

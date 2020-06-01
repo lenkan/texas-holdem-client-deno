@@ -1,233 +1,114 @@
 import { v4 as uuid } from "https://deno.land/std@v0.53.0/uuid/mod.ts";
-import { PokerSocket } from "./io.ts";
-import {
-  ActionRequestMessage,
-  ActionResponseMessage,
-  Action,
-  TablePlayer,
-  PlayIsStartedEvent,
-  Card,
-  TableState,
-  IncomingMessage,
-  RegisterResponseMessage,
-} from "./protocol.ts";
+import { PokerSocket } from "./socket.ts";
+import { Table, initialize, reduce } from "./table.ts";
+import { ActionRequestMessage, Action } from "./protocol.ts";
 
-function assertUnreachable(x: never) {
-  throw new Error(`Unreachable code reached`);
-}
+export type PokerRoom = "TRAINING" | "FREEPLAY" | "TOURNAMENT";
 
 export interface PokerClientOptions {
   name: string;
-  room: string;
+  room: PokerRoom;
 }
 
 export interface ActionRequest {
   actions: Action[];
+  callAction?: Action;
+  raiseAction?: Action;
+  foldAction?: Action;
+  checkAction?: Action;
+  allInAction?: Action;
 }
 
 export interface RequestHandler {
   (
     m: ActionRequest,
     table: Table,
-  ): Promise<Action>;
+  ): Promise<Action | undefined>;
 }
 
-export interface Table {
-  players: TablePlayer[];
-  me: TablePlayer;
-  dealer: TablePlayer;
-  bigBlindPlayer: TablePlayer;
-  smallBlindPlayer: TablePlayer;
-  communityCards: Card[];
-  myCards: Card[];
-  tableState: "DEALING" | TableState;
-}
+export async function register(
+  socket: PokerSocket,
+  options: PokerClientOptions,
+) {
+  const requestId = uuid.generate();
+  if (!options.name) {
+    throw new Error(`Invalid name '${options.name}'`);
+  }
 
-function reduce(
-  s: Table | null,
-  message: Exclude<
-    IncomingMessage,
-    ActionRequestMessage | RegisterResponseMessage
-  >,
-): Table | null {
-  switch (message.type) {
-    case "CommunityHasBeenDealtACardEvent":
-      return s && {
-        ...s,
-        communityCards: [...s.communityCards, message.card],
-      };
-    case "PlayIsStartedEvent":
-      return {
-        players: message.players,
-        me: message.players.find((p) => p.name === "lenkbot") as TablePlayer,
-        dealer: message.players.find((p) =>
-          p.name === message.dealer.name
-        ) as TablePlayer,
-        bigBlindPlayer: message.players.find((p) =>
-          p.name === message.bigBlindPlayer.name
-        ) as TablePlayer,
-        smallBlindPlayer: message.players.find((p) =>
-          p.name === message.smallBlindPlayer.name
-        ) as TablePlayer,
-        communityCards: [],
-        myCards: [],
-        tableState: "DEALING",
-      };
-    case "PlayerBetBigBlindEvent":
-      return s && {
-        ...s,
-      };
-    case "PlayerBetSmallBlindEvent":
-      return s && {
-        ...s,
-      };
-    case "ServerIsShuttingDownEvent":
-      return s && {
-        ...s,
-      };
-    case "TableChangedStateEvent":
-      return s && {
-        ...s,
-        tableState: message.state,
-      };
-    case "YouHaveBeenDealtACardEvent":
-      return s && {
-        ...s,
-        myCards: [...s.myCards, message.card],
-      };
-    case "YouWonAmountEvent":
-      return s && {
-        ...s,
-      };
-    case "ShowDownEvent":
-      return s && {
-        ...s,
-      };
-    case "TableIsDoneEvent":
-      return s && {
-        players: [],
-        communityCards: [],
-        me: {} as TablePlayer,
-        bigBlindPlayer: {} as TablePlayer,
-        smallBlindPlayer: {} as TablePlayer,
-        dealer: {} as TablePlayer,
-        myCards: [],
-        tableState: "DEALING",
-      };
-    case "PlayerCheckedEvent":
-    case "PlayerRaisedEvent":
-    case "PlayerWentAllInEvent":
-    case "PlayerCalledEvent":
-    case "PlayerFoldedEvent":
-    case "PlayerForcedFoldedEvent":
-    case "PlayerQuitEvent":
-    case "ServerIsShuttingDownEvent":
-      return s;
-    default:
-      assertUnreachable(message);
-      return s;
+  await socket.write({
+    type: "RegisterForPlayRequest",
+    name: options.name,
+    room: options.room,
+    requestId,
+    sessionId: "",
+  });
+
+  const response = await socket.read();
+  if (!response) {
+    throw new Error(`Socket unexpectedly closed`);
+  }
+
+  if (response.type === "error") {
+    throw new Error(response.message);
+  }
+
+  if (response.type !== "RegisterForPlayResponse") {
+    throw new Error(
+      `Expected 'RegisterForPlayResponse', got ${response.type}`,
+    );
   }
 }
 
-export class PokerClient {
-  #socket: PokerSocket;
-  #name: string;
-  #room: string;
-  #table: Table | null = null;
-
-  constructor(socket: PokerSocket, options: PokerClientOptions) {
-    this.#socket = socket;
-    this.#name = options.name;
-    this.#room = options.room;
-  }
-
-  #listen = async (handler: RequestHandler) => {
-    while (true) {
-      const message = await this.#socket.read();
-      if (!message) {
-        return;
-      }
-
-      switch (message.type) {
-        case "ActionRequest":
-          this.#handleActionRequest(handler, message);
-          break;
-        case "RegisterForPlayResponse":
-          break;
-        case "CommunityHasBeenDealtACardEvent":
-        case "PlayIsStartedEvent":
-        case "PlayerBetBigBlindEvent":
-        case "PlayerBetSmallBlindEvent":
-        case "ServerIsShuttingDownEvent":
-        case "TableChangedStateEvent":
-        case "YouHaveBeenDealtACardEvent":
-        case "YouWonAmountEvent":
-        case "ShowDownEvent":
-        case "TableIsDoneEvent":
-        case "PlayerForcedFoldedEvent":
-        case "PlayerCheckedEvent":
-        case "PlayerRaisedEvent":
-        case "PlayerWentAllInEvent":
-        case "PlayerCalledEvent":
-        case "PlayerFoldedEvent":
-        case "PlayerQuitEvent":
-        case "ServerIsShuttingDownEvent":
-          this.#table = reduce(this.#table, message);
-          break;
-        default:
-          assertUnreachable(message);
-          break;
-      }
-    }
+function mapActionRequest(a: Action[]): ActionRequest {
+  return {
+    actions: a,
+    ...a.reduce((acc, action) => {
+      return { ...acc, [action.actionType]: action };
+    }),
   };
+}
 
-  #updateTable = (table: Partial<Table>) => {
-    this.#table = {
-      ...this.#table,
-      ...table,
-    } as Table;
-  };
+export async function handleActions(
+  socket: PokerSocket,
+  handler: RequestHandler,
+  options: { name: string },
+) {
+  let table = initialize(options.name);
 
-  #handleActionRequest = async (
-    handler: RequestHandler,
-    message: ActionRequestMessage,
-  ) => {
-    if (!this.#table) {
-      throw new Error(`Cannot handle action without table`);
-    }
-    const response = await handler({
-      actions: message.possibleActions,
-    }, this.#table);
+  async function handleActionRequest(message: ActionRequestMessage) {
+    const response = await handler(
+      mapActionRequest(message.possibleActions),
+      table,
+    );
 
-    await this.#socket.write({
+    await socket.write({
       type: "ActionResponse",
       requestId: message.requestId,
-      action: response,
+      action: response || { actionType: "FOLD", amount: 0 },
     });
-  };
+  }
 
-  async start(handler: RequestHandler) {
-    const requestId = uuid.generate();
-
-    await this.#socket.write({
-      type: "RegisterForPlayRequest",
-      name: this.#name,
-      room: this.#room,
-      requestId,
-      sessionId: "",
-    });
-
-    const response = await this.#socket.read();
-    if (response?.type !== "RegisterForPlayResponse") {
-      throw new Error(`Expected response-ok got ${response?.type}`);
+  while (true) {
+    const message = await socket.read();
+    if (!message) {
+      return table;
     }
 
-    this.#listen(handler).catch((e) => {
-      console.error(e);
-    });
+    switch (message.type) {
+      case "error":
+        // TODO: Probably break out of loop and exit here
+        break;
+      case "ActionRequest":
+        handleActionRequest(message);
+        break;
+      case "ServerIsShuttingDownEvent":
+      case "RegisterForPlayResponse":
+        break;
+      default:
+        table = reduce(table, message);
+        break;
+    }
   }
 
-  close() {
-    return this.#socket.close();
-  }
+  return table;
 }

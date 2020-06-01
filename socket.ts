@@ -48,11 +48,6 @@ export function createWriter(
   };
 }
 
-export interface PokerSocketOptions {
-  hostname: string;
-  port: number;
-}
-
 export interface PokerSocket {
   write(event: OutgoingMessage): Promise<void>;
   read(): Promise<IncomingMessage | null>;
@@ -61,13 +56,9 @@ export interface PokerSocket {
 
 const jsonDelimiter = "_-^emil^-_";
 
-export async function connect(
-  options: PokerSocketOptions,
-): Promise<PokerSocket> {
-  const conn = await Deno.connect(
-    { hostname: options.hostname, port: options.port },
-  );
-
+export function createSocket(
+  conn: Deno.Conn,
+): PokerSocket {
   const writer = createWriter(conn, jsonDelimiter);
   const reader = createReader(conn, jsonDelimiter);
 
