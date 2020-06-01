@@ -14,7 +14,7 @@ export interface ActionRequest {
   actions: Action[];
   callAction?: Action;
   raiseAction?: Action;
-  foldAction?: Action;
+  foldAction: Action;
   checkAction?: Action;
   allInAction?: Action;
 }
@@ -23,7 +23,7 @@ export interface RequestHandler {
   (
     m: ActionRequest,
     table: Table,
-  ): Promise<Action | undefined>;
+  ): Promise<Action>;
 }
 
 export async function register(
@@ -62,9 +62,11 @@ export async function register(
 function mapActionRequest(a: Action[]): ActionRequest {
   return {
     actions: a,
-    ...a.reduce((acc, action) => {
-      return { ...acc, [action.actionType]: action };
-    }),
+    allInAction: a.find((x) => x.actionType === "ALL_IN"),
+    callAction: a.find((x) => x.actionType === "CALL"),
+    checkAction: a.find((x) => x.actionType === "CHECK"),
+    foldAction: a.find((x) => x.actionType === "FOLD")!,
+    raiseAction: a.find((x) => x.actionType === "RAISE"),
   };
 }
 

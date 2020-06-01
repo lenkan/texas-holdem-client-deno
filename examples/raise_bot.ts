@@ -1,17 +1,17 @@
-import { start } from "https://raw.githubusercontent.com/lenkan/texas-holdem-client-deno/v0.1.0/mod.ts";
+import { start } from "../mod.ts";
 
 const playerName = Deno.args[0];
 
 const result = await start(
   { name: playerName, room: "TRAINING" },
   async (actions, table) => {
-    const { raiseAction, callAction, checkAction } = actions;
+    const { raiseAction, callAction, checkAction, foldAction } = actions;
 
     console.log(table.myCards); // [{ rank: "ACE", suit: "CLUBS" }]
     console.log(table.myHand); // [{ name: "High Card", rank: 1 }]
     console.log(table.pot); // 1000
 
-    return checkAction || callAction;
+    return raiseAction || checkAction || callAction || foldAction;
   },
 );
 
