@@ -23,13 +23,13 @@ Create a file called `my_bot.ts`.
 
 ```ts
 // my_bot.ts
-import { start } from "https://raw.githubusercontent.com/lenkan/texas-holdem-client-deno/v0.1.1/mod.ts";
+import { start } from "https://raw.githubusercontent.com/lenkan/texas-holdem-client-deno/v0.2.0/mod.ts";
 
 const playerName = Deno.args[0];
 
 const result = await start(
   { name: playerName, room: "TRAINING" },
-  async (actions, table) => {
+  (actions, table) => {
     const { raiseAction, callAction, checkAction, foldAction } = actions;
 
     // console.log(table.myCards); // [{ rank: "ACE", suit: "CLUBS" }]
