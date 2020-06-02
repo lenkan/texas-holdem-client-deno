@@ -1,11 +1,11 @@
 import { assertEquals } from "./testing.ts";
-import { reduce, initialize } from "./table.ts";
+import { reduceState as reduce, initialState } from "./table_reducer.ts";
 import { TablePlayer } from "./protocol.ts";
 
 function init(players: TablePlayer[]) {
   const [p1, p2] = players;
 
-  const result = reduce(initialize(p1.name), {
+  const result = reduce(initialState, {
     type: "PlayIsStartedEvent",
     bigBlindAmount: 10,
     smallBlindAmount: 5,
@@ -25,7 +25,7 @@ Deno.test("handle start event", () => {
   const p3 = { name: "p3", chipCount: 10 };
   const p4 = { name: "p4", chipCount: 10 };
 
-  const result = reduce(initialize("p4"), {
+  const result = reduce(initialState, {
     type: "PlayIsStartedEvent",
     bigBlindAmount: 10,
     smallBlindAmount: 5,
@@ -67,13 +67,6 @@ Deno.test("handle start event", () => {
     investment: 0,
     folded: false,
   });
-
-  assertEquals(result.myName, "p4");
-  assertEquals(result.myChips, 10);
-  assertEquals(result.myCards, []);
-  assertEquals(result.myHand.name, "Nothing");
-  assertEquals(result.myHand.description, "Nothing");
-  assertEquals(result.myHand.rank, 0);
 });
 
 Deno.test("handle deal card event", () => {
@@ -88,10 +81,8 @@ Deno.test("handle deal card event", () => {
     },
   });
 
-  assertEquals(result.myCards.length, 1);
-  assertEquals(result.myCards[0], { rank: "ACE", suit: "CLUBS" });
-  assertEquals(result.myHand.name, "High Card");
-  assertEquals(result.myHand.rank, 1);
+  assertEquals(result.cards.length, 1);
+  assertEquals(result.cards[0], { rank: "ACE", suit: "CLUBS" });
 });
 
 Deno.test("handle community card event", () => {

@@ -4,9 +4,6 @@ import {
   OutgoingMessage,
   parseMessage,
 } from "./protocol.ts";
-import {
-  BufReader,
-} from "https://deno.land/std@v0.53.0/io/bufio.ts";
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
@@ -15,7 +12,6 @@ export function createReader(
   conn: Deno.Reader,
   delim: string,
 ): () => Promise<any | null> {
-  const reader = BufReader.create(conn);
   let buffer: string = "";
 
   return async () => {
@@ -29,7 +25,7 @@ export function createReader(
       }
 
       const p = new Uint8Array(1024);
-      const n = await reader.read(p);
+      const n = await conn.read(p);
       if (n === null) {
         return null;
       }

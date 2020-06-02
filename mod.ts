@@ -1,13 +1,26 @@
-import { createSocket, PokerSocket } from "./socket.ts";
 import {
-  handleActions,
-  register,
   PokerRoom,
   RequestHandler,
+  PokerClient,
+  Table,
+  Card,
+  Action,
+  ActionRequest,
+  Hand,
+  PokerClientOptions,
 } from "./client.ts";
-import { Table } from "./table.ts";
 
-export { RequestHandler, PokerRoom };
+export {
+  RequestHandler,
+  PokerRoom,
+  Table,
+  PokerClient,
+  PokerClientOptions,
+  Action,
+  Card,
+  ActionRequest,
+  Hand,
+};
 
 export interface PokerOptions {
   /**
@@ -24,11 +37,11 @@ export interface PokerOptions {
    * Defaults to 'TRAINING'
    */
   room?: PokerRoom;
-  name: string;
-}
 
-export interface PokerClient {
-  start(handler: RequestHandler): Promise<void>;
+  /**
+   * Name of the bot
+   */
+  name: string;
 }
 
 export async function start(
@@ -39,14 +52,12 @@ export async function start(
     { hostname: options.hostname || "localhost", port: options.port || 4711 },
   );
 
-  const socket = createSocket(conn);
-
-  await register(socket, {
+  const client = new PokerClient(conn, {
     name: options.name,
     room: options.room || "TRAINING",
   });
 
-  const result = await handleActions(socket, handler, options);
+  await client.register();
 
-  return result;
+  return client.start(handler);
 }

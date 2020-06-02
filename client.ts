@@ -1,13 +1,39 @@
 import { v4 as uuid } from "https://deno.land/std@v0.53.0/uuid/mod.ts";
-import { PokerSocket } from "./socket.ts";
-import { Table, initialize, reduce } from "./table.ts";
-import { ActionRequestMessage, Action } from "./protocol.ts";
+import { PokerSocket, createSocket } from "./socket.ts";
+import {
+  TableState,
+  reduceState,
+  initialState,
+  Player,
+} from "./table_reducer.ts";
+import {
+  ActionRequestMessage,
+  Action,
+  Card,
+} from "./protocol.ts";
+import { solve, Hand } from "./pokersolver.ts";
 
 export type PokerRoom = "TRAINING" | "FREEPLAY" | "TOURNAMENT";
+export { Card, Hand, Action };
+
+export interface Table {
+  id: number;
+  round: number;
+  players: Player[];
+  communityCards: Card[];
+  smallBlind: number;
+  bigBlind: number;
+  pot: number;
+  dealer: string;
+  myCards: Card[];
+  myHand: Hand;
+  myChips: number;
+  myName: string;
+}
 
 export interface PokerClientOptions {
   name: string;
-  room: PokerRoom;
+  room?: PokerRoom;
 }
 
 export interface ActionRequest {
@@ -23,40 +49,7 @@ export interface RequestHandler {
   (
     m: ActionRequest,
     table: Table,
-  ): Promise<Action>;
-}
-
-export async function register(
-  socket: PokerSocket,
-  options: PokerClientOptions,
-) {
-  const requestId = uuid.generate();
-  if (!options.name) {
-    throw new Error(`Invalid name '${options.name}'`);
-  }
-
-  await socket.write({
-    type: "RegisterForPlayRequest",
-    name: options.name,
-    room: options.room,
-    requestId,
-    sessionId: "",
-  });
-
-  const response = await socket.read();
-  if (!response) {
-    throw new Error(`Socket unexpectedly closed`);
-  }
-
-  if (response.type === "error") {
-    throw new Error(response.message);
-  }
-
-  if (response.type !== "RegisterForPlayResponse") {
-    throw new Error(
-      `Expected 'RegisterForPlayResponse', got ${response.type}`,
-    );
-  }
+  ): Promise<Action> | Action;
 }
 
 function mapActionRequest(a: Action[]): ActionRequest {
@@ -70,47 +63,111 @@ function mapActionRequest(a: Action[]): ActionRequest {
   };
 }
 
-export async function handleActions(
-  socket: PokerSocket,
-  handler: RequestHandler,
-  options: { name: string },
-) {
-  let table = initialize(options.name);
+export class PokerClient {
+  #socket: PokerSocket;
+  #name: string;
+  #room: PokerRoom;
+  #tableState: TableState = initialState;
 
-  async function handleActionRequest(message: ActionRequestMessage) {
+  constructor(
+    conn: Deno.Conn,
+    options: PokerClientOptions,
+  ) {
+    this.#socket = createSocket(conn);
+    this.#name = options.name;
+    this.#room = options.room || "TRAINING";
+  }
+
+  #handleActionsRequest = async (
+    handler: RequestHandler,
+    message: ActionRequestMessage,
+  ) => {
+    const table = this.table();
+
     const response = await handler(
       mapActionRequest(message.possibleActions),
       table,
     );
 
-    await socket.write({
+    await this.#socket.write({
       type: "ActionResponse",
       requestId: message.requestId,
-      action: response || { actionType: "FOLD", amount: 0 },
+      action: response,
     });
+  };
+
+  table(): Table {
+    const me = this.#tableState.players.find((p) => p.name === this.#name);
+    const dealer = this.#tableState.players.find((p) => p.isDealer);
+    return {
+      bigBlind: this.#tableState.bigBlind,
+      communityCards: this.#tableState.communityCards,
+      dealer: dealer?.name || "",
+      id: this.#tableState.id,
+      myCards: this.#tableState.cards,
+      myChips: me?.chipCount || 0,
+      myHand: solve(
+        [...this.#tableState.cards, ...this.#tableState.communityCards],
+      ),
+      myName: this.#name,
+      players: this.#tableState.players,
+      pot: this.#tableState.pot,
+      round: this.#tableState.round,
+      smallBlind: this.#tableState.smallBlind,
+    };
   }
 
-  while (true) {
-    const message = await socket.read();
-    if (!message) {
-      return table;
+  async register() {
+    const requestId = uuid.generate();
+    if (!this.#name) {
+      throw new Error(`Invalid name '${this.#name}'`);
     }
 
-    switch (message.type) {
-      case "error":
-        // TODO: Probably break out of loop and exit here
-        break;
-      case "ActionRequest":
-        handleActionRequest(message);
-        break;
-      case "ServerIsShuttingDownEvent":
-      case "RegisterForPlayResponse":
-        break;
-      default:
-        table = reduce(table, message);
-        break;
+    await this.#socket.write({
+      type: "RegisterForPlayRequest",
+      name: this.#name,
+      room: this.#room,
+      requestId,
+      sessionId: "",
+    });
+
+    const response = await this.#socket.read();
+    if (!response) {
+      throw new Error(`Socket unexpectedly closed`);
+    }
+
+    if (response.type === "error") {
+      throw new Error(response.message);
+    }
+
+    if (response.type !== "RegisterForPlayResponse") {
+      throw new Error(
+        `Expected 'RegisterForPlayResponse', got ${response.type}`,
+      );
     }
   }
 
-  return table;
+  async start(handler: RequestHandler): Promise<Table> {
+    while (true) {
+      const message = await this.#socket.read();
+      if (!message) {
+        return this.table();
+      }
+
+      switch (message.type) {
+        case "error":
+          // TODO: Probably break out of loop and exit here
+          break;
+        case "ActionRequest":
+          this.#handleActionsRequest(handler, message);
+          break;
+        case "ServerIsShuttingDownEvent":
+        case "RegisterForPlayResponse":
+          break;
+        default:
+          this.#tableState = reduceState(this.#tableState, message);
+          break;
+      }
+    }
+  }
 }

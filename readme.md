@@ -32,9 +32,9 @@ const result = await start(
   async (actions, table) => {
     const { raiseAction, callAction, checkAction, foldAction } = actions;
 
-    console.log(table.myCards); // [{ rank: "ACE", suit: "CLUBS" }]
-    console.log(table.myHand); // [{ name: "High Card", rank: 1 }]
-    console.log(table.pot); // 1000
+    // console.log(table.myCards); // [{ rank: "ACE", suit: "CLUBS" }]
+    // console.log(table.myHand); // [{ name: "High Card", rank: 1 }]
+    // console.log(table.pot); // 1000
 
     return raiseAction || checkAction || callAction || foldAction;
   },
