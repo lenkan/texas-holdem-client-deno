@@ -29,6 +29,7 @@ export interface Table {
   myHand: Hand;
   myChips: number;
   myName: string;
+  myInvestment: number;
 }
 
 export interface PokerClientOptions {
@@ -106,6 +107,7 @@ export class PokerClient {
       id: this.#tableState.id,
       myCards: this.#tableState.cards,
       myChips: me?.chipCount || 0,
+      myInvestment: me?.investment || 0,
       myHand: solve(
         [...this.#tableState.cards, ...this.#tableState.communityCards],
       ),
