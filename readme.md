@@ -23,7 +23,7 @@ Create a file called `my_bot.ts`.
 
 ```ts
 // my_bot.ts
-import { start } from "https://raw.githubusercontent.com/lenkan/texas-holdem-client-deno/v0.3.0/mod.ts";
+import { start } from "https://raw.githubusercontent.com/lenkan/texas-holdem-client-deno/v0.3.1/mod.ts";
 
 const playerName = Deno.args[0];
 
