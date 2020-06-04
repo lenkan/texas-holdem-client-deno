@@ -1,16 +1,16 @@
 import { assertEquals } from "./testing.ts";
 import { solve } from "./pokersolver.ts";
-import { Card } from "./protocol.ts";
+import { Card } from "./table_reducer.ts";
 
 Deno.test("solve - two pair in 7 cards", () => {
   const cards: Card[] = [
-    { rank: "ACE" as const, suit: "DIAMONDS" as const },
-    { rank: "ACE", suit: "SPADES" },
-    { rank: "JACK", suit: "CLUBS" },
-    { rank: "TEN", suit: "HEARTS" },
-    { rank: "DEUCE", suit: "DIAMONDS" },
-    { rank: "QUEEN", suit: "SPADES" },
-    { rank: "QUEEN", suit: "DIAMONDS" },
+    { rank: 14, suit: "d" },
+    { rank: 14, suit: "s" },
+    { rank: 11, suit: "c" },
+    { rank: 10, suit: "h" },
+    { rank: 2, suit: "d" },
+    { rank: 12, suit: "s" },
+    { rank: 12, suit: "d" },
   ];
   const hand = solve(cards);
 
@@ -21,8 +21,8 @@ Deno.test("solve - two pair in 7 cards", () => {
 
 Deno.test("solve - pair in 2 cards", () => {
   const cards: Card[] = [
-    { rank: "ACE" as const, suit: "DIAMONDS" as const },
-    { rank: "ACE", suit: "SPADES" },
+    { rank: 14, suit: "d" },
+    { rank: 14, suit: "s" },
   ];
   const hand = solve(cards);
   assertEquals(hand.name, "Pair");

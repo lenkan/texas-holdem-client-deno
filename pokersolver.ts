@@ -1,5 +1,5 @@
 import "https://unpkg.com/pokersolver@2.1.3/pokersolver.js";
-import { Suit, Rank, Card } from "./protocol.ts";
+import { Suit, Card } from "./table_reducer.ts";
 
 const Pokersolver = (window as any).Hand;
 
@@ -9,48 +9,33 @@ export interface Hand {
   description: string;
 }
 
-function mapSuit(suit: Suit): string {
-  switch (suit) {
-    case "CLUBS":
-      return "c";
-    case "DIAMONDS":
-      return "d";
-    case "HEARTS":
-      return "h";
-    case "SPADES":
-      return "s";
-    default:
-      throw new Error(`Invalid suit ${suit!}`);
-  }
-}
-
-function mapRank(rank: Rank): string {
+function mapRank(rank: number): string {
   switch (rank) {
-    case "ACE":
+    case 14:
       return "A";
-    case "KING":
+    case 13:
       return "K";
-    case "QUEEN":
+    case 12:
       return "Q";
-    case "JACK":
+    case 11:
       return "J";
-    case "TEN":
+    case 10:
       return "T";
-    case "NINE":
+    case 9:
       return "9";
-    case "EIGHT":
+    case 8:
       return "8";
-    case "SEVEN":
+    case 7:
       return "7";
-    case "SIX":
+    case 6:
       return "6";
-    case "FIVE":
+    case 5:
       return "5";
-    case "FOUR":
+    case 4:
       return "4";
-    case "THREE":
+    case 3:
       return "3";
-    case "DEUCE":
+    case 2:
       return "2";
     default:
       throw new Error(`Invalid rank ${rank!}`);
@@ -58,7 +43,7 @@ function mapRank(rank: Rank): string {
 }
 
 function mapCard(card: Card) {
-  return `${mapRank(card.rank)}${mapSuit(card.suit)}`;
+  return `${mapRank(card.rank)}${card.suit}`;
 }
 
 export function solve(cards: Card[]): Hand {

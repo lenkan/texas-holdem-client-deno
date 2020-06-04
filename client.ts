@@ -5,11 +5,11 @@ import {
   reduceState,
   initialState,
   Player,
+  Card,
 } from "./table_reducer.ts";
 import {
   ActionRequestMessage,
   Action,
-  Card,
 } from "./protocol.ts";
 import { solve, Hand } from "./pokersolver.ts";
 

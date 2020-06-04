@@ -1,11 +1,68 @@
 import {
-  Card,
+  Card as ProtocolCard,
+  Suit as ProtocolSuit,
+  Rank as ProtocolRank,
   TableEvent,
   TablePlayer,
 } from "./protocol.ts";
 
 function assertUnreachable(x: never): asserts x is never {
   throw new Error(`Unreachable code reached`);
+}
+
+function mapSuit(suit: ProtocolSuit): Suit {
+  switch (suit) {
+    case "CLUBS":
+      return "c";
+    case "DIAMONDS":
+      return "d";
+    case "HEARTS":
+      return "h";
+    case "SPADES":
+      return "s";
+    default:
+      throw new Error(`Invalid suit ${suit!}`);
+  }
+}
+
+function mapRank(rank: ProtocolRank): number {
+  switch (rank) {
+    case "ACE":
+      return 14;
+    case "KING":
+      return 13;
+    case "QUEEN":
+      return 12;
+    case "JACK":
+      return 11;
+    case "TEN":
+      return 10;
+    case "NINE":
+      return 9;
+    case "EIGHT":
+      return 8;
+    case "SEVEN":
+      return 7;
+    case "SIX":
+      return 6;
+    case "FIVE":
+      return 5;
+    case "FOUR":
+      return 4;
+    case "THREE":
+      return 3;
+    case "DEUCE":
+      return 2;
+    default:
+      throw new Error(`Invalid rank ${rank!}`);
+  }
+}
+
+export type Suit  = "h" | "d" | "s" | "c"
+
+export interface Card {
+  rank: number;
+  suit: "h" | "d" | "s" | "c"
 }
 
 export interface Player {
@@ -52,6 +109,13 @@ function mapPlayerFold(p: TablePlayer, investment: number) {
   };
 }
 
+function mapCard(card: ProtocolCard): Card {
+  return {
+    rank: mapRank(card.rank),
+    suit: mapSuit(card.suit)
+  }
+}
+
 export const initialState: TableState = {
   id: 0,
   round: -1,
@@ -71,7 +135,7 @@ export function reduceState(
     case "CommunityHasBeenDealtACardEvent":
       return {
         ...state,
-        communityCards: [...state.communityCards, event.card],
+        communityCards: [...state.communityCards, mapCard(event.card)],
       };
     case "PlayIsStartedEvent":
       return {
@@ -102,7 +166,7 @@ export function reduceState(
     case "YouHaveBeenDealtACardEvent":
       return {
         ...state,
-        cards: [...state.cards, event.card],
+        cards: [...state.cards, mapCard(event.card)],
       };
     case "YouWonAmountEvent":
       return state;

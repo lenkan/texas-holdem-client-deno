@@ -82,7 +82,7 @@ Deno.test("handle deal card event", () => {
   });
 
   assertEquals(result.cards.length, 1);
-  assertEquals(result.cards[0], { rank: "ACE", suit: "CLUBS" });
+  assertEquals(result.cards[0], { rank:  14, suit: "c" });
 });
 
 Deno.test("handle community card event", () => {
@@ -95,7 +95,7 @@ Deno.test("handle community card event", () => {
   });
 
   assertEquals(result.communityCards.length, 1);
-  assertEquals(result.communityCards[0], { rank: "ACE", suit: "CLUBS" });
+  assertEquals(result.communityCards[0], { rank: 14, suit: "c" });
 });
 
 Deno.test("handle player bet big blind event", () => {

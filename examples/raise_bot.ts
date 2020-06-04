@@ -9,6 +9,7 @@ const result = await start(
 
     console.log(table.myCards); // [{ rank: "ACE", suit: "CLUBS" }]
     console.log(table.myHand); // [{ name: "High Card", rank: 1 }]
+    // console.log(table)
     // console.log(table.pot); // 1000
 
     return raiseAction || checkAction || callAction || foldAction;
