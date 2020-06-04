@@ -6,6 +6,7 @@ import {
   initialState,
   Player,
   Card,
+  Suit,
 } from "./table_reducer.ts";
 import {
   ActionRequestMessage,
@@ -14,7 +15,7 @@ import {
 import { solve, Hand } from "./pokersolver.ts";
 
 export type PokerRoom = "TRAINING" | "FREEPLAY" | "TOURNAMENT";
-export { Card, Hand, Action };
+export { Card, Suit, Hand, Action };
 
 export interface Table {
   id: number;

@@ -7,6 +7,7 @@ import {
   Action,
   ActionRequest,
   Hand,
+  Suit,
   PokerClientOptions,
 } from "./client.ts";
 
@@ -20,6 +21,7 @@ export {
   Card,
   ActionRequest,
   Hand,
+  Suit
 };
 
 export interface PokerOptions {
